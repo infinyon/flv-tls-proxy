@@ -1,6 +1,6 @@
 [package]
 name = "flv-tls-proxy"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 authors = ["Fluvio Contributors <team@fluvio.io>"]
 description = "Simple Local TLS Proxy"
@@ -11,6 +11,6 @@ categories = ["encoding"]
 
 [dependencies]
 log = "0.4.8"
-futures = { version = "0.3.4" }
-flv-future-aio = { version = "2.0.0", features = ["tls"] }
-async-std = { version = "1.5.0", features = ["default","unstable"] }
+futures-lite = { version = "1.7.0" }
+futures-util = { version = "0.3.5", features = ["sink","io"]}
+fluvio-future = { version = "0.1.0", features = ["tls","net","task"] }
