@@ -2,10 +2,10 @@ use std::io::Error as IoError;
 use std::net::SocketAddr;
 use std::time;
 
-use log::debug;
 use bytes::BufMut;
 use bytes::Bytes;
 use bytes::BytesMut;
+use log::debug;
 
 use futures_lite::future::zip;
 use futures_lite::stream::StreamExt;
@@ -17,10 +17,10 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use fluvio_future::tls::TlsAcceptor;
 use fluvio_future::tls::TlsConnector;
 
-use fluvio_future::test_async;
-use fluvio_future::timer::sleep;
 use fluvio_future::net::TcpListener;
 use fluvio_future::net::TcpStream;
+use fluvio_future::test_async;
+use fluvio_future::timer::sleep;
 
 use fluvio_future::tls::AcceptorBuilder;
 use fluvio_future::tls::AllTcpStream;
@@ -79,7 +79,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
 
         let mut incoming = listener.incoming();
         while let Some(stream) = incoming.next().await {
-            
             debug!("server: new incoming connection");
 
             let tcp_stream = stream.expect("no stream");
@@ -89,28 +88,34 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             let mut i: u16 = 0;
             if let Some(value) = framed.next().await {
                 let bytes = value.expect("invalid value");
-                debug!("server: loop {}, received from client: {} bytes",i,bytes.len());
-               
+                debug!(
+                    "server: loop {}, received from client: {} bytes",
+                    i,
+                    bytes.len()
+                );
+
                 let slice = bytes.as_ref();
                 let mut str_bytes = vec![];
                 for b in slice {
                     str_bytes.push(b.to_owned());
                 }
                 let message = String::from_utf8(str_bytes).expect("utf8");
-                assert_eq!(message,format!("message{}",i));
-                let resply = format!("{}reply",message);
+                assert_eq!(message, format!("message{}", i));
+                let resply = format!("{}reply", message);
                 let reply_bytes = resply.as_bytes();
-                debug!("sever: send back reply: {}",resply);
-                framed.send(to_bytes(reply_bytes)).await.expect("send failed");
+                debug!("sever: send back reply: {}", resply);
+                framed
+                    .send(to_bytes(reply_bytes))
+                    .await
+                    .expect("send failed");
 
                 assert!(i < ITER);
 
                 i += 1;
                 if i == ITER {
                     assert!(true);
-                    return Ok(()) as Result<(), IoError>
+                    return Ok(()) as Result<(), IoError>;
                 }
-
             }
         }
 
@@ -121,7 +126,9 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         debug!("client: sleep to give server chance to come up");
         sleep(time::Duration::from_millis(200)).await;
         debug!("client: trying to connect");
-        let tcp_stream = TcpStream::connect(PROXY.to_owned()).await.expect("connection fail");
+        let tcp_stream = TcpStream::connect(PROXY.to_owned())
+            .await
+            .expect("connection fail");
         let tls_stream = connector
             .connect("localhost", tcp_stream)
             .await
@@ -131,33 +138,30 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         debug!("client: got connection. waiting");
 
         // do loop for const
-        for i in 0..ITER  {
-
-            let message = format!("message{}",i);
+        for i in 0..ITER {
+            let message = format!("message{}", i);
             let bytes = message.as_bytes();
-            debug!("client: loop {} sending test message",i);
+            debug!("client: loop {} sending test message", i);
             framed.send(to_bytes(bytes)).await.expect("send failed");
             let reply = framed.next().await.expect("messages").expect("frame");
-            debug!("client: loop {}, received reply back",i);
+            debug!("client: loop {}, received reply back", i);
             let slice = reply.as_ref();
             let mut str_bytes = vec![];
             for b in slice {
                 str_bytes.push(b.to_owned());
             }
             let message = String::from_utf8(str_bytes).expect("utf8");
-            assert_eq!(message,format!("message{}reply",i));
-            
+            assert_eq!(message, format!("message{}reply", i));
         }
-        
-        assert!(true);
 
+        assert!(true);
 
         Ok(()) as Result<(), IoError>
     };
 
-    let proxy = start(PROXY,acceptor.clone(),SERVER.to_string());
+    let proxy = start(PROXY, acceptor.clone(), SERVER.to_string());
 
-    let _ = zip(proxy,zip(client_ft, server_ft)).await;
+    let _ = zip(proxy, zip(client_ft, server_ft)).await;
 
     Ok(())
 }

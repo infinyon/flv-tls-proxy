@@ -1,12 +1,11 @@
 use std::io::Error as IoError;
 
-use futures_lite::io::copy;
 use fluvio_future::net::TcpListener;
 use fluvio_future::net::TcpStream;
 use fluvio_future::task::spawn;
 use fluvio_future::tls::DefaultServerTlsStream;
 use fluvio_future::tls::TlsAcceptor;
-
+use futures_lite::io::copy;
 
 use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
@@ -16,7 +15,6 @@ use log::info;
 
 /// start TLS proxy at addr to target
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
-
     let listener = TcpListener::bind(addr).await?;
     info!("proxy started at: {}", addr);
     let mut incoming = listener.incoming();
@@ -37,7 +35,7 @@ async fn process_stream(acceptor: TlsAcceptor, raw_stream: TcpStream, target: St
     let source = raw_stream
         .peer_addr()
         .map(|addr| addr.to_string())
-        .unwrap_or("".to_owned());
+        .unwrap_or_else(|_| "".to_owned());
 
     debug!("new connection from {}", source);
 
@@ -53,7 +51,6 @@ async fn process_stream(acceptor: TlsAcceptor, raw_stream: TcpStream, target: St
         Err(err) => error!("error handshaking: {} from source: {}", err, source),
     }
 }
-
 
 async fn proxy(
     tls_stream: DefaultServerTlsStream,
@@ -102,8 +99,6 @@ async fn proxy(
 
     Ok(())
 }
-
-
 
 /*
 mod copy {
