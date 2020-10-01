@@ -315,6 +315,7 @@ name = "flv-tls-proxy"
 version = "0.2.1"
 dependencies = [
  "async-lock",
+ "async-net",
  "bytes",
  "fluvio-future",
  "flv-util",
