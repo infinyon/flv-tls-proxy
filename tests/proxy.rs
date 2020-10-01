@@ -9,7 +9,6 @@ use futures_lite::stream::StreamExt;
 use futures_lite::AsyncReadExt;
 use futures_lite::AsyncWriteExt;
 
-
 use fluvio_future::tls::TlsAcceptor;
 use fluvio_future::tls::TlsConnector;
 
@@ -28,8 +27,6 @@ use flv_tls_proxy::start;
 const SERVER: &str = "127.0.0.1:19998";
 const PROXY: &str = "127.0.0.1:20000";
 const ITER: u16 = 10;
-
-
 
 #[test_async]
 async fn test_proxy() -> Result<(), IoError> {
@@ -78,8 +75,8 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
 
             let mut buf: Vec<u8> = vec![0; 1024];
             let n = tcp_stream.read(&mut buf).await.expect("read");
-        
-            debug!("client: loop {}, received reply back bytes: {}", i,n);
+
+            debug!("client: loop {}, received reply back bytes: {}", i, n);
             let mut str_bytes = vec![];
             for j in 0..n {
                 str_bytes.push(buf[j]);
@@ -100,7 +97,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             if i == ITER {
                 return Ok(()) as Result<(), IoError>;
             }
-            
         }
 
         Ok(()) as Result<(), IoError>
@@ -128,7 +124,7 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             tls_stream.write_all(bytes).await.expect("send failed");
             let mut buf: Vec<u8> = vec![0; 1024];
             let n = tls_stream.read(&mut buf).await.expect("read");
-            debug!("client: loop {}, received reply back bytes: {}", i,n);
+            debug!("client: loop {}, received reply back bytes: {}", i, n);
             let mut str_bytes = vec![];
             for j in 0..n {
                 str_bytes.push(buf[j]);
