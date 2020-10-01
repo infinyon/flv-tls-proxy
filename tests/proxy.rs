@@ -4,7 +4,6 @@ use std::time;
 
 use log::debug;
 
-
 use futures_lite::future::zip;
 use futures_lite::AsyncReadExt;
 use futures_lite::AsyncWriteExt;
@@ -13,14 +12,13 @@ use futures_util::stream::StreamExt;
 use async_net::TcpListener;
 use async_net::TcpStream;
 
-use fluvio_future::tls::TlsAcceptor;
-use fluvio_future::tls::TlsConnector;
 use fluvio_future::test_async;
 use fluvio_future::timer::sleep;
+use fluvio_future::tls::TlsAcceptor;
+use fluvio_future::tls::TlsConnector;
 
 use fluvio_future::tls::AcceptorBuilder;
 use fluvio_future::tls::ConnectorBuilder;
-
 
 // const CA_PATH: &'static str = "certs/certs/ca.crt";
 
@@ -143,7 +141,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
     Ok(())
 }
 
-
 mod proxy {
 
     use std::io::Error as IoError;
@@ -247,5 +244,4 @@ mod proxy {
 
         Ok(())
     }
-
 }
