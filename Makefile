@@ -7,6 +7,9 @@ build:
 test-all:
 	cargo test --all
 
+test-proxy:
+	RUST_LOG=proxy=debug  cargo test test_proxy
+
 
 install-fmt:
 	rustup component add rustfmt --toolchain $(RUSTV)
