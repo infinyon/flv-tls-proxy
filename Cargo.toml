@@ -1,10 +1,10 @@
 [package]
 name = "flv-tls-proxy"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 authors = ["Fluvio Contributors <team@fluvio.io>"]
 description = "Simple Local TLS Proxy"
-repository = "https://github.com/infinyon/fluvio"
+repository = "https://github.com/infinyon/flv-tls-proxy"
 license = "Apache-2.0"
 categories = ["encoding"]
 
