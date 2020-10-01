@@ -113,7 +113,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
 
                 i += 1;
                 if i == ITER {
-                    assert!(true);
                     return Ok(()) as Result<(), IoError>;
                 }
             }
@@ -154,7 +153,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             assert_eq!(message, format!("message{}reply", i));
         }
 
-        assert!(true);
 
         Ok(()) as Result<(), IoError>
     };
