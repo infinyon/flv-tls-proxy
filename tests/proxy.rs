@@ -153,7 +153,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             assert_eq!(message, format!("message{}reply", i));
         }
 
-
         Ok(()) as Result<(), IoError>
     };
 
