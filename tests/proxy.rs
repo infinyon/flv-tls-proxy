@@ -9,10 +9,9 @@ use log::debug;
 
 use futures_lite::future::zip;
 use futures_lite::stream::StreamExt;
-use futures_util::sink::SinkExt;
-use tokio_util::codec::BytesCodec;
-use tokio_util::codec::Framed;
-use tokio_util::compat::FuturesAsyncReadCompatExt;
+use futures_lite::AsyncReadExt;
+use futures_lite::AsyncWriteExt;
+
 
 use fluvio_future::tls::TlsAcceptor;
 use fluvio_future::tls::TlsConnector;
@@ -23,7 +22,6 @@ use fluvio_future::test_async;
 use fluvio_future::timer::sleep;
 
 use fluvio_future::tls::AcceptorBuilder;
-use fluvio_future::tls::AllTcpStream;
 use fluvio_future::tls::ConnectorBuilder;
 
 use flv_tls_proxy::start;
@@ -34,11 +32,7 @@ const SERVER: &str = "127.0.0.1:19998";
 const PROXY: &str = "127.0.0.1:20000";
 const ITER: u16 = 10;
 
-fn to_bytes(bytes: &[u8]) -> Bytes {
-    let mut buf = BytesMut::with_capacity(bytes.len());
-    buf.put_slice(&bytes);
-    buf.freeze()
-}
+
 
 #[test_async]
 async fn test_proxy() -> Result<(), IoError> {
@@ -78,44 +72,38 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         debug!("server: successfully binding. waiting for incoming");
 
         let mut incoming = listener.incoming();
-        while let Some(stream) = incoming.next().await {
+        while let Some(incoming_stream) = incoming.next().await {
             debug!("server: new incoming connection");
 
-            let tcp_stream = stream.expect("no stream");
-
-            let mut framed = Framed::new(tcp_stream.compat(), BytesCodec::new());
+            let mut tcp_stream = incoming_stream.expect("no stream");
 
             let mut i: u16 = 0;
-            if let Some(value) = framed.next().await {
-                let bytes = value.expect("invalid value");
-                debug!(
-                    "server: loop {}, received from client: {} bytes",
-                    i,
-                    bytes.len()
-                );
 
-                let slice = bytes.as_ref();
-                let mut str_bytes = vec![];
-                for b in slice {
-                    str_bytes.push(b.to_owned());
-                }
-                let message = String::from_utf8(str_bytes).expect("utf8");
-                assert_eq!(message, format!("message{}", i));
-                let resply = format!("{}reply", message);
-                let reply_bytes = resply.as_bytes();
-                debug!("sever: send back reply: {}", resply);
-                framed
-                    .send(to_bytes(reply_bytes))
-                    .await
-                    .expect("send failed");
-
-                assert!(i < ITER);
-
-                i += 1;
-                if i == ITER {
-                    return Ok(()) as Result<(), IoError>;
-                }
+            let mut buf: Vec<u8> = vec![0; 1024];
+            let n = tcp_stream.read(&mut buf).await.expect("read");
+        
+            debug!("client: loop {}, received reply back bytes: {}", i,n);
+            let mut str_bytes = vec![];
+            for j in 0..n {
+                str_bytes.push(buf[j]);
             }
+            let message = String::from_utf8(str_bytes).expect("utf8");
+            assert_eq!(message, format!("message{}", i));
+            let resply = format!("{}reply", message);
+            let reply_bytes = resply.as_bytes();
+            debug!("sever: send back reply: {}", resply);
+            tcp_stream
+                .write_all(reply_bytes)
+                .await
+                .expect("send failed");
+
+            assert!(i < ITER);
+
+            i += 1;
+            if i == ITER {
+                return Ok(()) as Result<(), IoError>;
+            }
+            
         }
 
         Ok(()) as Result<(), IoError>
@@ -128,12 +116,11 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         let tcp_stream = TcpStream::connect(PROXY.to_owned())
             .await
             .expect("connection fail");
-        let tls_stream = connector
+        let mut tls_stream = connector
             .connect("localhost", tcp_stream)
             .await
             .expect("tls failed");
-        let all_stream = AllTcpStream::Tls(tls_stream);
-        let mut framed = Framed::new(all_stream.compat(), BytesCodec::new());
+
         debug!("client: got connection. waiting");
 
         // do loop for const
@@ -141,13 +128,13 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             let message = format!("message{}", i);
             let bytes = message.as_bytes();
             debug!("client: loop {} sending test message", i);
-            framed.send(to_bytes(bytes)).await.expect("send failed");
-            let reply = framed.next().await.expect("messages").expect("frame");
-            debug!("client: loop {}, received reply back", i);
-            let slice = reply.as_ref();
+            tls_stream.write_all(bytes).await.expect("send failed");
+            let mut buf: Vec<u8> = vec![0; 1024];
+            let n = tls_stream.read(&mut buf).await.expect("read");
+            debug!("client: loop {}, received reply back bytes: {}", i,n);
             let mut str_bytes = vec![];
-            for b in slice {
-                str_bytes.push(b.to_owned());
+            for j in 0..n {
+                str_bytes.push(buf[j]);
             }
             let message = String::from_utf8(str_bytes).expect("utf8");
             assert_eq!(message, format!("message{}reply", i));
