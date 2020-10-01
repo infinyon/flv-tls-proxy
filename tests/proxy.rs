@@ -2,9 +2,6 @@ use std::io::Error as IoError;
 use std::net::SocketAddr;
 use std::time;
 
-use bytes::BufMut;
-use bytes::Bytes;
-use bytes::BytesMut;
 use log::debug;
 
 use futures_lite::future::zip;
