@@ -28,7 +28,7 @@ use fluvio_future::tls::ConnectorBuilder;
 
 use flv_tls_proxy::start;
 
-const CA_PATH: &'static str = "certs/certs/ca.crt";
+// const CA_PATH: &'static str = "certs/certs/ca.crt";
 
 const SERVER: &str = "127.0.0.1:19998";
 const PROXY: &str = "127.0.0.1:20000";
@@ -52,7 +52,7 @@ async fn test_proxy() -> Result<(), IoError> {
     .expect("no client cert test failed");
 
     // test client authentication
-
+    /*
     test_tls(
         AcceptorBuilder::new_client_authenticate(CA_PATH)?
             .load_server_certs("certs/certs/server.crt", "certs/certs/server.key")?
@@ -64,6 +64,7 @@ async fn test_proxy() -> Result<(), IoError> {
     )
     .await
     .expect("client cert test fail");
+    */
 
     Ok(())
 }
