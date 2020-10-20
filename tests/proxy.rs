@@ -20,8 +20,6 @@ use fluvio_future::tls::TlsConnector;
 use fluvio_future::tls::AcceptorBuilder;
 use fluvio_future::tls::ConnectorBuilder;
 
-use flv_tls_proxy as proxy;
-
 // const CA_PATH: &'static str = "certs/certs/ca.crt";
 
 const SERVER: &str = "127.0.0.1:19998";
@@ -134,7 +132,7 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         Ok(()) as Result<(), IoError>
     };
 
-    let proxy = proxy::start(PROXY, acceptor.clone(), SERVER.to_string());
+    let proxy = flv_tls_proxy::start(PROXY, acceptor.clone(), SERVER.to_string());
 
     let _ = zip(proxy, zip(client_ft, server_ft)).await;
 

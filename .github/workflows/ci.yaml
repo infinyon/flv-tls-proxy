@@ -8,21 +8,21 @@ on:
 
 jobs:
 
-  check_clippy:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        rust: [stable]
-    steps:
-      - uses: actions/checkout@v1
-      - name: Install ${{ matrix.rust }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: check clippy
-        run: make check-clippy RUSTV=${{ matrix.rust }}
+  #check_clippy:
+  #  runs-on: ${{ matrix.os }}
+  #  strategy:
+  #    matrix:
+  #      os: [ubuntu-latest]
+  #      rust: [stable]
+  #  steps:
+  #    - uses: actions/checkout@v1
+  #    - name: Install ${{ matrix.rust }}
+  #      uses: actions-rs/toolchain@v1
+  #      with:
+  #        toolchain: ${{ matrix.rust }}
+  #        override: true
+  #    - name: check clippy
+  #      run: make check-clippy RUSTV=${{ matrix.rust }}
   check_fmt:
     name: check cargo fmt
     runs-on: ${{ matrix.os }}
