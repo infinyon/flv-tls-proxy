@@ -14,6 +14,7 @@ log = "0.4.8"
 futures-lite = { version = "1.7.0" }
 futures-util = { version = "0.3.5", features = ["sink","io"]}
 fluvio-future = { version = "0.1.0", features = ["tls","net","task"] }
+async-std = { version = "1.6.0", features = ["unstable"]}
 pin-project-lite = "0.1.0"
 
 [dev-dependencies]
