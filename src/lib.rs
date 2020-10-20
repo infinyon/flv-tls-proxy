@@ -52,6 +52,7 @@ async fn process_stream(acceptor: TlsAcceptor, raw_stream: TcpStream, target: St
     }
 }
 
+#[cfg(not(feature = "spawn"))]
 async fn proxy(
     tls_stream: DefaultServerTlsStream,
     target: String,
@@ -99,3 +100,5 @@ async fn proxy(
 
     Ok(())
 }
+
+
