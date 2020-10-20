@@ -10,6 +10,10 @@ test-all:
 test-proxy:
 	RUST_LOG=proxy=debug  cargo test test_proxy
 
+# currently this does not work
+test-proxy-spawn:
+	RUST_LOG=proxy=debug  cargo test test_proxy --features spawn
+
 
 install-fmt:
 	rustup component add rustfmt --toolchain $(RUSTV)

@@ -101,4 +101,52 @@ async fn proxy(
     Ok(())
 }
 
+#[cfg(feature = "spawn")]
+async fn proxy(
+    tls_stream: DefaultServerTlsStream,
+    target: String,
+    source: String,
+) -> Result<(), IoError> {
+    
 
+    debug!(
+        "trying to connect to target at: {} from source: {}",
+        target, source
+    );
+    let mut tcp_stream = TcpStream::connect(&target).await?;
+
+    debug!("connect to target: {} from source: {}", target, source);
+    let mut target_sink = tcp_stream.clone();
+
+    //let (mut target_stream, mut target_sink) = tcp_stream.split();
+    let (from_tls_stream, mut from_tls_sink) = tls_stream.split();
+
+    let s_t = format!("{}->{}", source, target);
+    let t_s = format!("{}->{}", target, source);
+    let source_to_target_ft = async move{
+        match copy(from_tls_stream, &mut target_sink).await {
+            Ok(len) => {
+                debug!("{} copy from source to target: len {}", s_t, len);
+            }
+            Err(err) => {
+                error!("{} error copying: {}", s_t, err);
+            }
+        }
+    };
+
+    let target_to_source = async move {
+        match copy(&mut tcp_stream, &mut from_tls_sink).await {
+            Ok(len) => {
+                debug!("{} copy from target: len {}", t_s, len);
+            }
+            Err(err) => {
+                error!("{} error copying: {}", t_s, err);
+            }
+        }
+    };
+
+    spawn(source_to_target_ft);
+    spawn(target_to_source);
+
+    Ok(())
+}
