@@ -14,6 +14,7 @@ use log::error;
 use log::info;
 
 /// start TLS proxy at addr to target
+#[allow(unused)]
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
     let listener = TcpListener::bind(addr).await?;
     info!("proxy started at: {}", addr);

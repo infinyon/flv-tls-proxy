@@ -9,14 +9,19 @@ license = "Apache-2.0"
 categories = ["encoding"]
 
 [features]
-spawn=[]
+default = ["rustls"]
+spawn = ["rustls"]
+rustls = ["fluvio-future/tls"]
+native= ["async-native-tls","native-tls"]
 
 [dependencies]
 log = "0.4.8"
 futures-lite = { version = "1.7.0" }
-futures-util = { version = "0.3.5", features = ["sink","io"]}
-fluvio-future = { version = "0.1.0", features = ["tls","net","task"] }
 pin-project-lite = "0.1.0"
+futures-util = { version = "0.3.5", features = ["sink","io"]}
+fluvio-future = { version = "0.1.0", features = ["net","task"] }
+async-native-tls = { version = "0.3.3", optional = true }
+native-tls = { version = "0.2.4", optional = true }
 
 [dev-dependencies]
 bytes = "0.5.6"
