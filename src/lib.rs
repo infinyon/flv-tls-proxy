@@ -58,7 +58,6 @@ async fn proxy(
     source: String,
 ) -> Result<(), IoError> {
     use futures_lite::future::zip;
-    use async_std::task::spawn_local;
 
     debug!(
         "trying to connect to target at: {} from source: {}",
@@ -75,7 +74,7 @@ async fn proxy(
     let s_t = format!("{}->{}", source, target);
     let t_s = format!("{}->{}", target, source);
     let source_to_target_ft = async {
-        match copy(from_tls_stream, &mut target_sink).await {
+        match copy(&mut from_tls_stream, &mut target_sink).await {
             Ok(len) => {
                 debug!("{} copy from source to target: len {}", s_t, len);
             }
@@ -96,8 +95,7 @@ async fn proxy(
         }
     };
 
-    spawn_local(source_to_target_ft);
-    spawn_local(target_to_source);
+    zip(source_to_target_ft, target_to_source).await;
 
     Ok(())
 }
