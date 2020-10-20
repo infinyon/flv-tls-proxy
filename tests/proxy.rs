@@ -20,7 +20,6 @@ use fluvio_future::tls::TlsConnector;
 use fluvio_future::tls::AcceptorBuilder;
 use fluvio_future::tls::ConnectorBuilder;
 
-
 // const CA_PATH: &'static str = "certs/certs/ca.crt";
 
 const SERVER: &str = "127.0.0.1:19998";
