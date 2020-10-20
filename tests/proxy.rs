@@ -70,7 +70,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         let mut tcp_stream = incoming_stream.expect("no stream");
 
         for i in 0..ITER {
-           
             let mut buf: Vec<u8> = vec![0; 1024];
             let n = tcp_stream.read(&mut buf).await.expect("read");
 
@@ -80,7 +79,7 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
                 str_bytes.push(buf[j]);
             }
             let message = String::from_utf8(str_bytes).expect("utf8");
-            debug!("server: loop {}, received message: {}",i,message);
+            debug!("server: loop {}, received message: {}", i, message);
             assert_eq!(message, format!("message{}", i));
             let resply = format!("{}reply", message);
             let reply_bytes = resply.as_bytes();
@@ -89,7 +88,6 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
                 .write_all(reply_bytes)
                 .await
                 .expect("send failed");
-
         }
 
         debug!("server done");
@@ -114,7 +112,7 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         // do loop for const
         for i in 0..ITER {
             let message = format!("message{}", i);
-            debug!("client: loop {} sending test message: {}", i,message);
+            debug!("client: loop {} sending test message: {}", i, message);
             let bytes = message.as_bytes();
             tls_stream.write_all(bytes).await.expect("send failed");
             let mut buf: Vec<u8> = vec![0; 1024];
@@ -125,7 +123,10 @@ async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
                 str_bytes.push(buf[j]);
             }
             let reply_message = String::from_utf8(str_bytes).expect("utf8");
-            debug!("client: loop {}, received reply message: {}", i, reply_message);
+            debug!(
+                "client: loop {}, received reply message: {}",
+                i, reply_message
+            );
             assert_eq!(reply_message, format!("message{}reply", i));
         }
 

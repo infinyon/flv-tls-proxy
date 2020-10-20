@@ -107,8 +107,6 @@ async fn proxy(
     target: String,
     source: String,
 ) -> Result<(), IoError> {
-    
-
     debug!(
         "trying to connect to target at: {} from source: {}",
         target, source
@@ -123,7 +121,7 @@ async fn proxy(
 
     let s_t = format!("{}->{}", source, target);
     let t_s = format!("{}->{}", target, source);
-    let source_to_target_ft = async move{
+    let source_to_target_ft = async move {
         match copy(from_tls_stream, &mut target_sink).await {
             Ok(len) => {
                 debug!("{} copy from source to target: len {}", s_t, len);

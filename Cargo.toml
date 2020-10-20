@@ -1,6 +1,6 @@
 [package]
 name = "flv-tls-proxy"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 authors = ["Fluvio Contributors <team@fluvio.io>"]
 description = "Simple Local TLS Proxy"
