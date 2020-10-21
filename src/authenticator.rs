@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use fluvio_future::net::TcpStream;
 use fluvio_future::tls::DefaultServerTlsStream;
 
+/// Abstracts logic to authenticate incoming stream and forward authoization context to target
 #[async_trait]
 pub trait Authenticator: Send + Sync {
     async fn authenticate(
@@ -11,6 +12,7 @@ pub trait Authenticator: Send + Sync {
     ) -> Result<bool, std::io::Error>;
 }
 
+/// Null implementation where authenticate always returns true
 pub(crate) struct NullAuthenticator;
 
 #[async_trait]
