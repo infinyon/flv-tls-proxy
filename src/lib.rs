@@ -7,3 +7,5 @@ pub use native::*;
 mod rustls;
 #[cfg(feature = "rustls")]
 pub use rustls::*;
+
+pub mod authenticator;

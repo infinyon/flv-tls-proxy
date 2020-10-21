@@ -67,8 +67,6 @@ async fn proxy(
     );
     let mut tcp_stream = TcpStream::connect(&target).await?;
 
-    // pass principle identifier
-
     debug!("connect to target: {} from source: {}", target, source);
     let mut target_sink = tcp_stream.clone();
 
