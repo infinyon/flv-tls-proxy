@@ -1,4 +1,4 @@
-use std::io::Error as IoError;
+use std::{io::Error as IoError, sync::Arc};
 
 use fluvio_future::net::TcpListener;
 use fluvio_future::net::TcpStream;
@@ -13,16 +13,37 @@ use log::debug;
 use log::error;
 use log::info;
 
+use crate::authenticator::{Authenticator, NullAuthenticator};
+
+type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
+
 /// start TLS proxy at addr to target
 #[allow(unused)]
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
+    start_with_authenticator(addr, acceptor, target, Box::new(NullAuthenticator)).await
+}
+
+/// start TLS proxy at addr to target
+#[allow(unused)]
+pub async fn start_with_authenticator(
+    addr: &str,
+    acceptor: TlsAcceptor,
+    target: String,
+    authenticator: Box<dyn Authenticator>,
+) -> Result<(), IoError> {
     let listener = TcpListener::bind(addr).await?;
     info!("proxy started at: {}", addr);
     let mut incoming = listener.incoming();
+    let shared_authenticator = Arc::new(authenticator);
     while let Some(stream) = incoming.next().await {
         debug!("server: got connection from client");
         if let Ok(tcp_stream) = stream {
-            spawn(process_stream(acceptor.clone(), tcp_stream, target.clone()));
+            spawn(process_stream(
+                acceptor.clone(),
+                tcp_stream,
+                target.clone(),
+                shared_authenticator.clone(),
+            ));
         } else {
             error!("no stream detected");
         }
@@ -32,7 +53,12 @@ pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<
     Ok(())
 }
 
-async fn process_stream(acceptor: TlsAcceptor, raw_stream: TcpStream, target: String) {
+async fn process_stream(
+    acceptor: TlsAcceptor,
+    raw_stream: TcpStream,
+    target: String,
+    authenticator: SharedAuthenticator,
+) {
     let source = raw_stream
         .peer_addr()
         .map(|addr| addr.to_string())
@@ -45,7 +71,7 @@ async fn process_stream(acceptor: TlsAcceptor, raw_stream: TcpStream, target: St
     match handshake.await {
         Ok(inner_stream) => {
             debug!("handshake success from: {}", source);
-            if let Err(err) = proxy(inner_stream, target, source.clone()).await {
+            if let Err(err) = proxy(inner_stream, target, source.clone(), authenticator).await {
                 error!("error processing tls: {} from source: {}", err, source);
             }
         }
@@ -58,6 +84,7 @@ async fn proxy(
     tls_stream: DefaultServerTlsStream,
     target: String,
     source: String,
+    authenticator: SharedAuthenticator,
 ) -> Result<(), IoError> {
     use futures_lite::future::zip;
 
@@ -66,6 +93,14 @@ async fn proxy(
         target, source
     );
     let mut tcp_stream = TcpStream::connect(&target).await?;
+
+    let auth_success = authenticator.authenticate(&tls_stream, &tcp_stream).await?;
+    if !auth_success {
+        debug!("authentication failed, dropping connection");
+        return Ok(());
+    } else {
+        debug!("authentication succeeded");
+    }
 
     debug!("connect to target: {} from source: {}", target, source);
     let mut target_sink = tcp_stream.clone();
