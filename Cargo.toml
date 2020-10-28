@@ -1,6 +1,6 @@
 [package]
 name = "flv-tls-proxy"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2018"
 authors = ["Fluvio Contributors <team@fluvio.io>"]
 description = "Simple Local TLS Proxy"
@@ -27,7 +27,7 @@ serde_json = "1.0.59"
 async-trait = "0.1.41"
 
 # Fluvio dependencies
-fluvio-future = { version = "0.1.2", features = ["net", "task", "fs"] }
+fluvio-future = { version = "0.1.7", features = ["net", "task", "fs"] }
 fluvio-socket = { version = "0.2.0" }
 fluvio-protocol = { version = "0.2.1", features = ["derive", "api", "codec", "store"] }
 
@@ -39,6 +39,3 @@ async-lock = "1.1.0"
 tokio-util = { version = "0.3.1", features = ["codec", "compat"] }
 flv-util = { version = "0.5.0", features = ["fixture"] }
 fluvio-future = { version = "0.1.0", features = ["net", "fixture", "timer", "fs"] }
-
-[patch.crates-io]
-async-tls = { version = "0.10.0", git = "https://github.com/infinyon/async-tls.git" }
