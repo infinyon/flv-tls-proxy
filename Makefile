@@ -4,11 +4,13 @@ RUSTV = stable
 build:
 	cargo build --all
 
-test-all:
+test-all:	test-proxy test-units
+
+test-units:
 	cargo test --all
 
 test-proxy:
-	RUST_LOG=proxy=debug  cargo test test_proxy --no-default-features  --features rust_tls
+	cargo test test_proxy --no-default-features  --features rust_tls
 
 # currently this does not work
 test-proxy-spawn:

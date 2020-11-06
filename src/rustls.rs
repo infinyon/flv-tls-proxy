@@ -23,6 +23,25 @@ use crate::authenticator::{Authenticator, NullAuthenticator};
 
 type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
 
+
+pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
+    let builder = ProxyBuilder::new(addr.to_string(),acceptor,target);
+    builder.start().await
+}
+
+/// start TLS proxy at addr to target
+
+pub async fn start_with_authenticator(
+    addr: &str,
+    acceptor: TlsAcceptor,
+    target: String,
+    authenticator: Box<dyn Authenticator>,
+) -> Result<(), IoError> {
+    let builder = ProxyBuilder::new(addr.to_string(),acceptor,target)
+        .with_authenticator(authenticator);
+    builder.start().await
+}
+
 pub struct ProxyBuilder {
     addr: String,
     acceptor: TlsAcceptor,

@@ -4,6 +4,7 @@ mod tests {
     use std::io::Error as IoError;
     use std::net::SocketAddr;
     use std::time;
+    use std::sync::Arc;
 
     use log::debug;
 
@@ -11,7 +12,7 @@ mod tests {
     use futures_lite::AsyncReadExt;
     use futures_lite::AsyncWriteExt;
     use futures_util::stream::StreamExt;
-
+    use event_listener::Event;
 
     use fluvio_future::test_async;
     use fluvio_future::timer::sleep;
@@ -22,8 +23,8 @@ mod tests {
     use fluvio_future::tls::AcceptorBuilder;
     use fluvio_future::tls::ConnectorBuilder;
 
-    use flv_tls_proxy::start_with_authenticator_terminate;
-    use flv_tls_proxy::authenticator::NullAuthenticator;
+    use flv_tls_proxy::ProxyBuilder;
+
 
     // const CA_PATH: &'static str = "certs/certs/ca.crt";
 
@@ -62,6 +63,7 @@ mod tests {
 
     async fn test_tls(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), IoError> {
         let addr = SERVER.parse::<SocketAddr>().expect("parse");
+        let event = Arc::new(Event::new());
 
         let server_ft = async {
             debug!("server: binding");
@@ -134,15 +136,15 @@ mod tests {
             }
 
             debug!("client done");
+            event.notify(1);
             Ok(()) as Result<(), IoError>
         };
 
-        let proxy = start_with_authenticator_terminate(PROXY,
-             acceptor.clone(), 
-             SERVER.to_string(),
-            );
+        
+        let proxy = ProxyBuilder::new(PROXY.to_owned(),acceptor, SERVER.to_string())
+            .with_terminate(event.clone());
 
-        let _ = zip(proxy, zip(client_ft, server_ft)).await;
+        let _ = zip(proxy.start(), zip(client_ft, server_ft)).await;
 
         Ok(())
     }
