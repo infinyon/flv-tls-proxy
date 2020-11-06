@@ -11,7 +11,7 @@ categories = ["encoding"]
 [features]
 default = ["rust_tls"]
 spawn = []
-rust_tls = ["fluvio-future/tls"]
+rust_tls = ["fluvio-future/rust_tls"]
 native_tls = ["fluvio-future/native2_tls"]
 
 [dependencies]
@@ -26,7 +26,7 @@ async-trait = "0.1.41"
 event-listener = "2.5.1"
 tokio = { version = "0.2.21", features = ["macros"] }
 # Fluvio dependencies
-fluvio-future = { version = "0.1.7", features = ["net", "task"] }
+fluvio-future = { version = "0.1.8", features = ["net", "task"] }
 
 
 [dev-dependencies]
