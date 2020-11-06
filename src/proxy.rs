@@ -1,57 +1,117 @@
 use std::{io::Error as IoError, sync::Arc};
 
-use fluvio_future::net::TcpListener;
-use fluvio_future::net::TcpStream;
-use fluvio_future::task::spawn;
-use fluvio_future::tls::DefaultServerTlsStream;
-use fluvio_future::tls::TlsAcceptor;
+use event_listener::Event;
 use futures_lite::io::copy;
-
 use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
 use log::debug;
 use log::error;
 use log::info;
 
+use fluvio_future::net::TcpStream;
+
+use crate::tls::DefaultServerTlsStream;
+use crate::tls::TlsAcceptor;
+
+type TerminateEvent = Arc<Event>;
+
 use crate::authenticator::{Authenticator, NullAuthenticator};
 
 type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
 
-/// start TLS proxy at addr to target
-#[allow(unused)]
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
-    start_with_authenticator(addr, acceptor, target, Box::new(NullAuthenticator)).await
+    let builder = ProxyBuilder::new(addr.to_string(), acceptor, target);
+    builder.start().await
 }
 
 /// start TLS proxy at addr to target
-#[allow(unused)]
+
 pub async fn start_with_authenticator(
     addr: &str,
     acceptor: TlsAcceptor,
     target: String,
     authenticator: Box<dyn Authenticator>,
 ) -> Result<(), IoError> {
-    let listener = TcpListener::bind(addr).await?;
-    info!("proxy started at: {}", addr);
-    let mut incoming = listener.incoming();
-    let shared_authenticator = Arc::new(authenticator);
-    while let Some(stream) = incoming.next().await {
-        debug!("server: got connection from client");
-        if let Ok(tcp_stream) = stream {
-            spawn(process_stream(
-                acceptor.clone(),
-                tcp_stream,
-                target.clone(),
-                shared_authenticator.clone(),
-            ));
-        } else {
-            error!("no stream detected");
+    let builder =
+        ProxyBuilder::new(addr.to_string(), acceptor, target).with_authenticator(authenticator);
+    builder.start().await
+}
+
+pub struct ProxyBuilder {
+    addr: String,
+    acceptor: TlsAcceptor,
+    target: String,
+    authenticator: Box<dyn Authenticator>,
+    terminate: TerminateEvent,
+}
+
+impl ProxyBuilder {
+    pub fn new(addr: String, acceptor: TlsAcceptor, target: String) -> Self {
+        Self {
+            addr,
+            acceptor,
+            target,
+            authenticator: Box::new(NullAuthenticator),
+            terminate: Arc::new(Event::new()),
         }
     }
 
-    info!("server terminated");
-    Ok(())
+    pub fn with_authenticator(mut self, authenticator: Box<dyn Authenticator>) -> Self {
+        self.authenticator = authenticator;
+        self
+    }
+
+    pub fn with_terminate(mut self, terminate: TerminateEvent) -> Self {
+        self.terminate = terminate;
+        self
+    }
+
+    pub async fn start(self) -> Result<(), IoError> {
+        use tokio::select;
+
+        use fluvio_future::net::TcpListener;
+        use fluvio_future::task::spawn;
+
+        let listener = TcpListener::bind(&self.addr).await?;
+        info!("proxy started at: {}", self.addr);
+        let mut incoming = listener.incoming();
+        let shared_authenticator = Arc::new(self.authenticator);
+
+        loop {
+            select! {
+                _ = self.terminate.listen() => {
+                    info!("terminate event received");
+                    return Ok(());
+                }
+                incoming_stream = incoming.next() => {
+                    if let Some(stream) = incoming_stream {
+                        debug!("server: got connection from client");
+                        if let Ok(tcp_stream) = stream {
+                            let acceptor = self.acceptor.clone();
+                            let target = self.target.clone();
+                            spawn(process_stream(
+                                acceptor,
+                                tcp_stream,
+                                target,
+                                shared_authenticator.clone()
+                            ));
+                        } else {
+                            error!("no stream detected");
+                            return Ok(());
+                        }
+
+                    } else {
+                        info!("no more incoming streaming");
+                        return Ok(());
+                    }
+                }
+
+            }
+        }
+    }
 }
+
+/// start TLS proxy at addr to target
 
 async fn process_stream(
     acceptor: TlsAcceptor,
@@ -79,7 +139,6 @@ async fn process_stream(
     }
 }
 
-#[cfg(not(feature = "spawn"))]
 async fn proxy(
     tls_stream: DefaultServerTlsStream,
     target: String,
@@ -133,54 +192,6 @@ async fn proxy(
     };
 
     zip(source_to_target_ft, target_to_source).await;
-
-    Ok(())
-}
-
-#[cfg(feature = "spawn")]
-async fn proxy(
-    tls_stream: DefaultServerTlsStream,
-    target: String,
-    source: String,
-) -> Result<(), IoError> {
-    debug!(
-        "trying to connect to target at: {} from source: {}",
-        target, source
-    );
-    let mut tcp_stream = TcpStream::connect(&target).await?;
-
-    debug!("connect to target: {} from source: {}", target, source);
-    let mut target_sink = tcp_stream.clone();
-
-    //let (mut target_stream, mut target_sink) = tcp_stream.split();
-    let (from_tls_stream, mut from_tls_sink) = tls_stream.split();
-
-    let s_t = format!("{}->{}", source, target);
-    let t_s = format!("{}->{}", target, source);
-    let source_to_target_ft = async move {
-        match copy(from_tls_stream, &mut target_sink).await {
-            Ok(len) => {
-                debug!("{} copy from source to target: len {}", s_t, len);
-            }
-            Err(err) => {
-                error!("{} error copying: {}", s_t, err);
-            }
-        }
-    };
-
-    let target_to_source = async move {
-        match copy(&mut tcp_stream, &mut from_tls_sink).await {
-            Ok(len) => {
-                debug!("{} copy from target: len {}", t_s, len);
-            }
-            Err(err) => {
-                error!("{} error copying: {}", t_s, err);
-            }
-        }
-    };
-
-    spawn(source_to_target_ft);
-    spawn(target_to_source);
 
     Ok(())
 }

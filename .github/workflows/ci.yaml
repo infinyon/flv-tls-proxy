@@ -57,3 +57,5 @@ jobs:
         override: true
     - name: Build
       run:  make build
+    - name: Test
+      run:  make test-all

@@ -4,15 +4,16 @@ RUSTV = stable
 build:
 	cargo build --all
 
-test-all:
+test-all:	test-units test-proxy-rustls test-proxy-native
+
+test-units:
 	cargo test --all
 
-test-proxy:
-	RUST_LOG=proxy=debug  cargo test test_proxy
+test-proxy-rustls:
+	cargo test test_rustls --no-default-features  --features rust_tls
 
-# currently this does not work
-test-proxy-spawn:
-	RUST_LOG=proxy=debug  cargo test test_proxy --features spawn
+test-proxy-native:
+	cargo test test_native --no-default-features --features native_tls
 
 
 install-fmt:
