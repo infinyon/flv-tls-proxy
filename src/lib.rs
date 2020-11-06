@@ -3,9 +3,9 @@ mod native;
 #[cfg(feature = "native")]
 pub use native::*;
 
-#[cfg(feature = "rustls")]
+#[cfg(feature = "rust_tls")]
 mod rustls;
-#[cfg(feature = "rustls")]
+#[cfg(feature = "rust_tls")]
 pub use rustls::*;
 
 pub mod authenticator;

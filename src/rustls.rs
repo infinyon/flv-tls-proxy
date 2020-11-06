@@ -1,57 +1,110 @@
 use std::{io::Error as IoError, sync::Arc};
 
-use fluvio_future::net::TcpListener;
-use fluvio_future::net::TcpStream;
-use fluvio_future::task::spawn;
-use fluvio_future::tls::DefaultServerTlsStream;
-use fluvio_future::tls::TlsAcceptor;
-use futures_lite::io::copy;
-
-use futures_util::io::AsyncReadExt;
-use futures_util::stream::StreamExt;
 use log::debug;
 use log::error;
 use log::info;
+use futures_lite::io::copy;
+use futures_util::io::AsyncReadExt;
+use futures_util::stream::StreamExt;
+use event_listener::Event;
+
+
+use fluvio_future::net::TcpStream;
+
+
+#[cfg(feature = "rust_tls")]
+use fluvio_future::tls::DefaultServerTlsStream;
+#[cfg(feature = "rust_tls")]
+use fluvio_future::tls::TlsAcceptor;
+
+type TerminateEvent = Arc<Event>;
 
 use crate::authenticator::{Authenticator, NullAuthenticator};
 
 type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
 
-/// start TLS proxy at addr to target
-#[allow(unused)]
-pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
-    start_with_authenticator(addr, acceptor, target, Box::new(NullAuthenticator)).await
-}
-
-/// start TLS proxy at addr to target
-#[allow(unused)]
-pub async fn start_with_authenticator(
-    addr: &str,
+pub struct ProxyBuilder {
+    addr: String,
     acceptor: TlsAcceptor,
     target: String,
     authenticator: Box<dyn Authenticator>,
-) -> Result<(), IoError> {
-    let listener = TcpListener::bind(addr).await?;
-    info!("proxy started at: {}", addr);
-    let mut incoming = listener.incoming();
-    let shared_authenticator = Arc::new(authenticator);
-    while let Some(stream) = incoming.next().await {
-        debug!("server: got connection from client");
-        if let Ok(tcp_stream) = stream {
-            spawn(process_stream(
-                acceptor.clone(),
-                tcp_stream,
-                target.clone(),
-                shared_authenticator.clone(),
-            ));
-        } else {
-            error!("no stream detected");
+    terminate: TerminateEvent
+}
+
+impl ProxyBuilder {
+    pub fn new(addr: String,acceptor: TlsAcceptor,target: String) -> Self {
+        Self {
+            addr,
+            acceptor,
+            target,
+            authenticator: Box::new(NullAuthenticator),
+            terminate: Arc::new(Event::new())
         }
     }
 
-    info!("server terminated");
-    Ok(())
+    pub fn with_authenticator(mut self, authenticator: Box<dyn Authenticator>) -> Self {
+        self.authenticator = authenticator;
+        self
+    }
+
+    pub fn with_terminate(mut self, terminate: TerminateEvent) -> Self {
+        self.terminate = terminate;
+        self
+    }
+
+    pub async fn start(self)  -> Result<(), IoError> {
+
+        use tokio::select;
+
+        use fluvio_future::task::spawn;
+        use fluvio_future::net::TcpListener;
+
+        let listener = TcpListener::bind(&self.addr).await?;
+        info!("proxy started at: {}", self.addr);
+        let mut incoming = listener.incoming();
+        let shared_authenticator = Arc::new(self.authenticator);
+        
+        loop {
+            select! {
+                _ = self.terminate.listen() => {
+                    info!("terminate event received");
+                    return Ok(());
+                }
+                incoming_stream = incoming.next() => {
+                    if let Some(stream) = incoming_stream {
+                        debug!("server: got connection from client");
+                        if let Ok(tcp_stream) = stream {
+                            let acceptor = self.acceptor.clone();
+                            let target = self.target.clone();
+                            spawn(process_stream(
+                                acceptor,
+                                tcp_stream,
+                                target,
+                                shared_authenticator.clone()
+                            ));
+                        } else {
+                            error!("no stream detected");
+                            return Ok(());
+                        }
+    
+                    } else {
+                        info!("no more incoming streaming");
+                        return Ok(());
+                    }
+                }
+    
+            }
+    
+        }
+        
+    }
+
 }
+
+
+
+/// start TLS proxy at addr to target
+
 
 async fn process_stream(
     acceptor: TlsAcceptor,

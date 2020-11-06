@@ -8,7 +8,7 @@ test-all:
 	cargo test --all
 
 test-proxy:
-	RUST_LOG=proxy=debug  cargo test test_proxy
+	RUST_LOG=proxy=debug  cargo test test_proxy --no-default-features  --features rust_tls
 
 # currently this does not work
 test-proxy-spawn:
