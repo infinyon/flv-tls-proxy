@@ -9,12 +9,8 @@ test-all:	test-proxy test-units
 test-units:
 	cargo test --all
 
-test-proxy:
-	cargo test test_proxy --no-default-features  --features rust_tls
-
-# currently this does not work
-test-proxy-spawn:
-	RUST_LOG=proxy=debug  cargo test test_proxy --features spawn
+test-proxy-rustls:
+	cargo test test_rustls --no-default-features  --features rust_tls
 
 
 install-fmt:

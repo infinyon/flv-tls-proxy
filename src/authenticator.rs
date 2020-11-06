@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use fluvio_future::net::TcpStream;
-use fluvio_future::tls::DefaultServerTlsStream;
+
+use crate::tls::DefaultServerTlsStream;
 
 /// Abstracts logic to authenticate incoming stream and forward authoization context to target
 #[async_trait]

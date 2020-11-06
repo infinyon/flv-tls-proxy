@@ -392,14 +392,17 @@ dependencies = [
 name = "flv-tls-proxy"
 version = "0.2.5"
 dependencies = [
+ "async-native-tls",
  "async-trait",
  "bytes",
+ "cfg-if 1.0.0",
  "event-listener",
  "fluvio-future",
  "flv-util",
  "futures-lite",
  "futures-util",
  "log",
+ "native-tls",
  "pin-project-lite",
  "serde",
  "serde_json",

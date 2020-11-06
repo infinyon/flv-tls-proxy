@@ -17,13 +17,20 @@ mod tests {
     use fluvio_future::test_async;
     use fluvio_future::timer::sleep;
     use fluvio_future::net::{ TcpStream, TcpListener };
-    use fluvio_future::tls::TlsAcceptor;
-    use fluvio_future::tls::TlsConnector;
 
-    use fluvio_future::tls::AcceptorBuilder;
-    use fluvio_future::tls::ConnectorBuilder;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "rust_tls")] {
+            use fluvio_future::rust_tls::TlsConnector;
+            use fluvio_future::rust_tls::AcceptorBuilder;
+            use fluvio_future::rust_tls::ConnectorBuilder;
+        } else if #[cfg(feature  = "native_tls")] {
+            use async_native_tls::TlsConnector;
+            use native_tls::{Identity, TlsAcceptor as SyncTlsAcceptor};
+        }
+    }
 
     use flv_tls_proxy::ProxyBuilder;
+    use flv_tls_proxy::tls::TlsAcceptor;
 
 
     // const CA_PATH: &'static str = "certs/certs/ca.crt";
@@ -32,8 +39,50 @@ mod tests {
     const PROXY: &str = "127.0.0.1:20000";
     const ITER: u16 = 10;
 
+
+    #[cfg(feature = "native_tls")]
+    /// run using native tls
     #[test_async]
-    async fn test_proxy() -> Result<(), IoError> {
+    async fn test_native() -> Result<(), IoError> {
+        use std::fs::File;
+        use std::io::Read;
+
+        let mut file = File::open("certs/certs/server.pfx").unwrap();
+        let mut pkcs12 = vec![];
+        file.read_to_end(&mut pkcs12).unwrap();
+        let pkcs12 = Identity::from_pkcs12(&pkcs12, "test").unwrap();
+        let acceptor: TlsAcceptor = SyncTlsAcceptor::new(pkcs12).unwrap().into();
+        
+        let connector = TlsConnector::new()
+            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true);
+
+        test_tls(acceptor, connector)
+            .await
+            .expect("no client cert test failed");
+
+        // test client authentication
+        /*
+        test_tls(
+            AcceptorBuilder::new_client_authenticate(CA_PATH)?
+                .load_server_certs("certs/certs/server.crt", "certs/certs/server.key")?
+                .build(),
+            ConnectorBuilder::new()
+                .load_client_certs("certs/certs/client.crt", "certs/certs/client.key")?
+                .load_ca_cert(CA_PATH)?
+                .build(),
+        )
+        .await
+        .expect("client cert test fail");
+        */
+
+        Ok(())
+    }
+
+
+    #[cfg(feature = "rust_tls")]
+    #[test_async]
+    async fn test_rustls() -> Result<(), IoError> {
         test_tls(
             AcceptorBuilder::new_no_client_authentication()
                 .load_server_certs("certs/certs/server.crt", "certs/certs/server.key")?

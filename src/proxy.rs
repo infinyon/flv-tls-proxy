@@ -11,18 +11,8 @@ use event_listener::Event;
 
 use fluvio_future::net::TcpStream;
 
-#[cfg(feature = "rust_tls")]
-use fluvio_future::rust_tls::DefaultServerTlsStream;
-#[cfg(feature = "rust_tls")]
-use fluvio_future::rust_tls::TlsAcceptor;
-
-
-#[cfg(feature = "native_tls")]
-use fluvio_future::native_tls::DefaultServerTlsStream;
-#[cfg(feature = "native_tls")]
-use fluvio_future::native_tls::TlsAcceptor;
-
-
+use crate::tls::TlsAcceptor;
+use crate::tls::DefaultServerTlsStream;
 
 type TerminateEvent = Arc<Event>;
 

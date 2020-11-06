@@ -16,6 +16,7 @@ native_tls = ["fluvio-future/native2_tls"]
 
 [dependencies]
 log = "0.4.8"
+cfg-if = "1.0.0"
 futures-lite = { version = "1.7.0" }
 pin-project-lite = "0.1.0"
 futures-util = { version = "0.3.5", features = ["sink", "io"] }
@@ -31,6 +32,8 @@ fluvio-future = { version = "0.1.8", features = ["net", "task"] }
 
 [dev-dependencies]
 bytes = "0.5.6"
+native-tls = "0.2.4"
+async-native-tls = "0.3.3"
 futures-util = { version = "0.3.5", features = ["sink"] }
 flv-util = { version = "0.5.0", features = ["fixture"] }
-fluvio-future = { version = "0.1.0", features = ["net", "fixture", "timer"] }
+fluvio-future = { version = "0.1.0", features = ["net", "fixture", "timer","native2_tls","rust_tls"] }
