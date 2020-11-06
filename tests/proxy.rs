@@ -1,22 +1,20 @@
-
-
 mod tests {
     use std::io::Error as IoError;
     use std::net::SocketAddr;
-    use std::time;
     use std::sync::Arc;
+    use std::time;
 
     use log::debug;
 
+    use event_listener::Event;
     use futures_lite::future::zip;
     use futures_lite::AsyncReadExt;
     use futures_lite::AsyncWriteExt;
     use futures_util::stream::StreamExt;
-    use event_listener::Event;
 
+    use fluvio_future::net::{TcpListener, TcpStream};
     use fluvio_future::test_async;
     use fluvio_future::timer::sleep;
-    use fluvio_future::net::{ TcpStream, TcpListener };
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "rust_tls")] {
@@ -29,16 +27,14 @@ mod tests {
         }
     }
 
-    use flv_tls_proxy::ProxyBuilder;
     use flv_tls_proxy::tls::TlsAcceptor;
-
+    use flv_tls_proxy::ProxyBuilder;
 
     // const CA_PATH: &'static str = "certs/certs/ca.crt";
 
     const SERVER: &str = "127.0.0.1:19998";
     const PROXY: &str = "127.0.0.1:20000";
     const ITER: u16 = 10;
-
 
     #[cfg(feature = "native_tls")]
     /// run using native tls
@@ -52,7 +48,7 @@ mod tests {
         file.read_to_end(&mut pkcs12).unwrap();
         let pkcs12 = Identity::from_pkcs12(&pkcs12, "test").unwrap();
         let acceptor: TlsAcceptor = SyncTlsAcceptor::new(pkcs12).unwrap().into();
-        
+
         let connector = TlsConnector::new()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true);
@@ -78,7 +74,6 @@ mod tests {
 
         Ok(())
     }
-
 
     #[cfg(feature = "rust_tls")]
     #[test_async]
@@ -189,8 +184,7 @@ mod tests {
             Ok(()) as Result<(), IoError>
         };
 
-        
-        let proxy = ProxyBuilder::new(PROXY.to_owned(),acceptor, SERVER.to_string())
+        let proxy = ProxyBuilder::new(PROXY.to_owned(), acceptor, SERVER.to_string())
             .with_terminate(event.clone());
 
         let _ = zip(proxy.start(), zip(client_ft, server_ft)).await;

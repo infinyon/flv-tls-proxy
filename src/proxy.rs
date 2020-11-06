@@ -1,18 +1,17 @@
 use std::{io::Error as IoError, sync::Arc};
 
-use log::debug;
-use log::error;
-use log::info;
+use event_listener::Event;
 use futures_lite::io::copy;
 use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
-use event_listener::Event;
-
+use log::debug;
+use log::error;
+use log::info;
 
 use fluvio_future::net::TcpStream;
 
-use crate::tls::TlsAcceptor;
 use crate::tls::DefaultServerTlsStream;
+use crate::tls::TlsAcceptor;
 
 type TerminateEvent = Arc<Event>;
 
@@ -20,9 +19,8 @@ use crate::authenticator::{Authenticator, NullAuthenticator};
 
 type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
 
-
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
-    let builder = ProxyBuilder::new(addr.to_string(),acceptor,target);
+    let builder = ProxyBuilder::new(addr.to_string(), acceptor, target);
     builder.start().await
 }
 
@@ -34,8 +32,8 @@ pub async fn start_with_authenticator(
     target: String,
     authenticator: Box<dyn Authenticator>,
 ) -> Result<(), IoError> {
-    let builder = ProxyBuilder::new(addr.to_string(),acceptor,target)
-        .with_authenticator(authenticator);
+    let builder =
+        ProxyBuilder::new(addr.to_string(), acceptor, target).with_authenticator(authenticator);
     builder.start().await
 }
 
@@ -44,17 +42,17 @@ pub struct ProxyBuilder {
     acceptor: TlsAcceptor,
     target: String,
     authenticator: Box<dyn Authenticator>,
-    terminate: TerminateEvent
+    terminate: TerminateEvent,
 }
 
 impl ProxyBuilder {
-    pub fn new(addr: String,acceptor: TlsAcceptor,target: String) -> Self {
+    pub fn new(addr: String, acceptor: TlsAcceptor, target: String) -> Self {
         Self {
             addr,
             acceptor,
             target,
             authenticator: Box::new(NullAuthenticator),
-            terminate: Arc::new(Event::new())
+            terminate: Arc::new(Event::new()),
         }
     }
 
@@ -68,18 +66,17 @@ impl ProxyBuilder {
         self
     }
 
-    pub async fn start(self)  -> Result<(), IoError> {
-
+    pub async fn start(self) -> Result<(), IoError> {
         use tokio::select;
 
-        use fluvio_future::task::spawn;
         use fluvio_future::net::TcpListener;
+        use fluvio_future::task::spawn;
 
         let listener = TcpListener::bind(&self.addr).await?;
         info!("proxy started at: {}", self.addr);
         let mut incoming = listener.incoming();
         let shared_authenticator = Arc::new(self.authenticator);
-        
+
         loop {
             select! {
                 _ = self.terminate.listen() => {
@@ -102,25 +99,19 @@ impl ProxyBuilder {
                             error!("no stream detected");
                             return Ok(());
                         }
-    
+
                     } else {
                         info!("no more incoming streaming");
                         return Ok(());
                     }
                 }
-    
-            }
-    
-        }
-        
-    }
 
+            }
+        }
+    }
 }
 
-
-
 /// start TLS proxy at addr to target
-
 
 async fn process_stream(
     acceptor: TlsAcceptor,
@@ -147,7 +138,6 @@ async fn process_stream(
         Err(err) => error!("error handshaking: {} from source: {}", err, source),
     }
 }
-
 
 async fn proxy(
     tls_stream: DefaultServerTlsStream,

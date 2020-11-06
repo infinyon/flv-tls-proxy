@@ -14,5 +14,4 @@ pub mod tls {
             pub use fluvio_future::native_tls::TlsAcceptor;
         }
     }
-    
 }

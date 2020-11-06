@@ -4,13 +4,16 @@ RUSTV = stable
 build:
 	cargo build --all
 
-test-all:	test-proxy test-units
+test-all:	test-units test-proxy-rustls test-proxy-native
 
 test-units:
 	cargo test --all
 
 test-proxy-rustls:
 	cargo test test_rustls --no-default-features  --features rust_tls
+
+test-proxy-native:
+	cargo test test_native --no-default-features --features native_tls
 
 
 install-fmt:
