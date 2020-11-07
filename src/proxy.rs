@@ -1,7 +1,6 @@
 use std::{io::Error as IoError, sync::Arc};
 
 use event_listener::Event;
-use futures_lite::io::copy;
 use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
 use log::debug;
@@ -146,6 +145,7 @@ async fn proxy(
     authenticator: SharedAuthenticator,
 ) -> Result<(), IoError> {
     use futures_lite::future::zip;
+    use crate::copy::copy;
 
     debug!(
         "trying to connect to target at: {} from source: {}",
@@ -170,7 +170,7 @@ async fn proxy(
     let s_t = format!("{}->{}", source, target);
     let t_s = format!("{}->{}", target, source);
     let source_to_target_ft = async {
-        match copy(&mut from_tls_stream, &mut target_sink).await {
+        match copy(&mut from_tls_stream, &mut target_sink,s_t.clone()).await {
             Ok(len) => {
                 debug!("{} copy from source to target: len {}", s_t, len);
             }
@@ -181,7 +181,7 @@ async fn proxy(
     };
 
     let target_to_source = async {
-        match copy(&mut tcp_stream, &mut from_tls_sink).await {
+        match copy(&mut tcp_stream, &mut from_tls_sink,t_s.clone()).await {
             Ok(len) => {
                 debug!("{} copy from target: len {}", t_s, len);
             }
