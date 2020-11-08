@@ -25,6 +25,7 @@ where
             #[pin]
             writer: W,
             amt: u64,
+            loop_index: u64,
             #[pin]
             label: String
         }
@@ -41,7 +42,7 @@ where
             let mut this = self.project();
 
             loop {
-                trace!("{}, starting loop with amt {}", this.label, this.amt);
+                trace!("{}, loop {} with amt {}", this.label, this.loop_index, this.amt);
                 let buffer = ready!(this.reader.as_mut().poll_fill_buf(cx))?;
                 if buffer.is_empty() {
                     trace!("{}, buffer is empty, flushing", this.label);
@@ -60,6 +61,7 @@ where
                 *this.amt += i as u64;
                // trace!("{},consuming amt: {}", this.label, this.amt);
                 this.reader.as_mut().consume(i);
+                *this.loop_index += 1;
             }
         }
     }
@@ -68,6 +70,7 @@ where
         reader: BufReader::new(reader),
         writer,
         amt: 0,
+        loop_index: 0,
         label,
     };
     future.await
