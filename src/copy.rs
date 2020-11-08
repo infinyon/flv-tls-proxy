@@ -45,9 +45,8 @@ where
                 trace!("{}, loop {} with amt {}", this.label, this.loop_index, this.amt);
                 let buffer = ready!(this.reader.as_mut().poll_fill_buf(cx))?;
                 if buffer.is_empty() {
-                    trace!("{}, buffer is empty, flushing", this.label);
+                    trace!("{}, buffer is empty, flushing and exiting", this.label);
                     ready!(this.writer.as_mut().poll_flush(cx))?;
-                    trace!("{}, flush done, exiting", this.label);
                     return Poll::Ready(Ok(*this.amt));
                 }
 
