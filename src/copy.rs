@@ -50,15 +50,15 @@ where
                     return Poll::Ready(Ok(*this.amt));
                 }
 
-                trace!("{}, read {}", this.label, buffer.len());
+                trace!("{}, read {} bytes", this.label, buffer.len());
                 let i = ready!(this.writer.as_mut().poll_write(cx, buffer))?;
-                trace!("{}, write: {}", this.label, i);
+                trace!("{}, write {} bytes", this.label, i);
                 if i == 0 {
                     trace!("{}, no write occuring, returing with ready", this.label);
                     return Poll::Ready(Err(io::ErrorKind::WriteZero.into()));
                 }
                 *this.amt += i as u64;
-                trace!("{},consuming amt: {}", this.label, this.amt);
+               // trace!("{},consuming amt: {}", this.label, this.amt);
                 this.reader.as_mut().consume(i);
             }
         }
