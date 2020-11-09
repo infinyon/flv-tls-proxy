@@ -2,7 +2,6 @@ mod tests {
     use std::io::Error as IoError;
     use std::net::SocketAddr;
     use std::sync::Arc;
-    use std::time;
 
     use log::debug;
 
@@ -14,7 +13,6 @@ mod tests {
 
     use fluvio_future::net::{TcpListener, TcpStream};
     use fluvio_future::test_async;
-    use fluvio_future::timer::sleep;
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "rust_tls")] {
@@ -146,7 +144,7 @@ mod tests {
 
         let client_ft = async {
             debug!("client: sleep to give server chance to come up");
-            sleep(time::Duration::from_millis(200)).await;
+
             debug!("client: trying to connect");
             let tcp_stream = TcpStream::connect(PROXY.to_owned())
                 .await
@@ -188,6 +186,8 @@ mod tests {
             .with_terminate(event.clone());
 
         let _ = zip(proxy.start(), zip(client_ft, server_ft)).await;
+
+        // give little time to flush everything out
 
         Ok(())
     }
