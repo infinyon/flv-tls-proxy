@@ -1,17 +1,15 @@
-
-
+use core::task::{Context, Poll};
 use std::io;
 use std::pin::Pin;
-use core::task::{Context, Poll};
 
-use log::trace;
-use pin_project_lite::pin_project;
 use futures_util::future::Future;
 use futures_util::io::AsyncBufRead as BufRead;
 use futures_util::io::AsyncRead as Read;
 use futures_util::io::AsyncWrite as Write;
 use futures_util::io::BufReader;
 use futures_util::ready;
+use log::trace;
+use pin_project_lite::pin_project;
 
 pub async fn copy<R, W>(reader: &mut R, writer: &mut W, label: String) -> io::Result<u64>
 where
@@ -42,7 +40,12 @@ where
             let mut this = self.project();
 
             loop {
-                trace!("{}, loop {} with amt {}", this.label, this.loop_index, this.amt);
+                trace!(
+                    "{}, loop {} with amt {}",
+                    this.label,
+                    this.loop_index,
+                    this.amt
+                );
                 let buffer = ready!(this.reader.as_mut().poll_fill_buf(cx))?;
                 if buffer.is_empty() {
                     trace!("{}, buffer is empty, flushing and exiting", this.label);
@@ -58,7 +61,7 @@ where
                     return Poll::Ready(Err(io::ErrorKind::WriteZero.into()));
                 }
                 *this.amt += i as u64;
-               // trace!("{},consuming amt: {}", this.label, this.amt);
+                // trace!("{},consuming amt: {}", this.label, this.amt);
                 this.reader.as_mut().consume(i);
                 *this.loop_index += 1;
             }
@@ -74,4 +77,3 @@ where
     };
     future.await
 }
-
