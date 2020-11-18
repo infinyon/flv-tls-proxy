@@ -86,7 +86,7 @@ impl ProxyBuilder {
                     if let Some(stream) = incoming_stream {
                         debug!("server: got connection from client");
                         if let Ok(tcp_stream) = stream {
-                            tcp_stream;
+                           
 
                             let acceptor = self.acceptor.clone();
                             let target = self.target.clone();
@@ -154,7 +154,7 @@ async fn proxy(
         target, source
     );
     let mut tcp_stream = TcpStream::connect(&target).await?;
-    tcp_stream.set_nodelay(true);
+    tcp_stream.set_nodelay(true)?;
 
     let auth_success = authenticator.authenticate(&tls_stream, &tcp_stream).await?;
     if !auth_success {
