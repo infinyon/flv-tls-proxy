@@ -95,12 +95,12 @@ impl ProxyBuilder {
                                 shared_authenticator.clone()
                             ));
                         } else {
-                            error!("no stream detected");
+                            debug!("no stream detected");
                             return Ok(());
                         }
 
                     } else {
-                        info!("no more incoming streaming");
+                        debug!("no more incoming streaming");
                         return Ok(());
                     }
                 }
@@ -134,7 +134,7 @@ async fn process_stream(
                 error!("error processing tls: {} from source: {}", err, source);
             }
         }
-        Err(err) => error!("error handshaking: {} from source: {}", err, source),
+        Err(err) => error!("handshaking failed: {} from source: {}", err, source),
     }
 }
 
@@ -170,6 +170,7 @@ async fn proxy(
     let s_t = format!("{}->{}", source, target);
     let t_s = format!("{}->{}", target, source);
     let source_to_target_ft = async {
+        debug!("start copy from source: {} to: {}",source,target);
         match copy(&mut from_tls_stream, &mut target_sink, s_t.clone()).await {
             Ok(len) => {
                 debug!("total {} bytes copied from source to target: {}", len, s_t);
@@ -181,6 +182,7 @@ async fn proxy(
     };
 
     let target_to_source = async {
+        debug!("start copy from target {} to source: {}",source,target);
         match copy(&mut tcp_stream, &mut from_tls_sink, t_s.clone()).await {
             Ok(len) => {
                 debug!("total {} bytes copied from target: {}", len, t_s);
