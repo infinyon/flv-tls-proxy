@@ -105,8 +105,8 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             let n = tls_stream.read(&mut buf).await.expect("read");
             debug!("client: loop {}, received reply back bytes: {}", i, n);
             let mut str_bytes = vec![];
-            for j in 0..n {
-                str_bytes.push(buf[j]);
+            for item in buf.into_iter() {
+                str_bytes.push(item);
             }
             let reply_message = String::from_utf8(str_bytes).expect("utf8");
             debug!(
