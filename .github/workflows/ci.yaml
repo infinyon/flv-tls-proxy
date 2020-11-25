@@ -8,17 +8,17 @@ on:
 
 jobs:
   check_clippy:
-  name: Check formatting and clippy
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v1
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: Check formatting
-      run: make check-fmt
-    - name: Check clippy
-      run: make check-clippy
+    name: Check formatting and clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check formatting
+        run: make check-fmt
+      - name: Check clippy
+        run: make check-clippy
 
   smoke_test:
     name: Smoke test
@@ -29,13 +29,13 @@ jobs:
         rust: [stable]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install ${{ matrix.rust }}
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - name: Build
-      run:  make build
-    - name: Test
-      run:  make test-all
+      - uses: actions/checkout@v2
+      - name: Install ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Build
+        run:  make build
+      - name: Test
+        run:  make test-all
