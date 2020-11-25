@@ -7,38 +7,18 @@ on:
     branches: [ master ]
 
 jobs:
-
-  #check_clippy:
-  #  runs-on: ${{ matrix.os }}
-  #  strategy:
-  #    matrix:
-  #      os: [ubuntu-latest]
-  #      rust: [stable]
-  #  steps:
-  #    - uses: actions/checkout@v1
-  #    - name: Install ${{ matrix.rust }}
-  #      uses: actions-rs/toolchain@v1
-  #      with:
-  #        toolchain: ${{ matrix.rust }}
-  #        override: true
-  #    - name: check clippy
-  #      run: make check-clippy RUSTV=${{ matrix.rust }}
-  check_fmt:
-    name: check cargo fmt
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        rust: [stable]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install ${{ matrix.rust }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: check fmt
-        run: make check-fmt RUSTV=${{ matrix.rust }}
+  check_clippy:
+  name: Check formatting and clippy
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: Check formatting
+      run: make check-fmt
+    - name: Check clippy
+      run: make check-clippy
 
   smoke_test:
     name: Smoke test
