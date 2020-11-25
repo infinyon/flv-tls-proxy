@@ -11,12 +11,12 @@ use futures_lite::AsyncWriteExt;
 use futures_util::stream::StreamExt;
 
 use fluvio_future::net::{TcpListener, TcpStream};
+use fluvio_future::openssl::{TlsAcceptor, TlsConnector, TlsError};
 use fluvio_future::test_async;
-use fluvio_future::openssl::{TlsConnector, TlsAcceptor, TlsError};
 
 use flv_tls_proxy::ProxyBuilder;
 
-const CA_PATH: &'static str = "certs/certs/ca.crt";
+const CA_PATH: &str = "certs/certs/ca.crt";
 
 const SERVER: &str = "127.0.0.1:19998";
 const PROXY: &str = "127.0.0.1:20000";
@@ -26,7 +26,10 @@ const ITER: u16 = 10;
 async fn test_proxy() -> Result<(), TlsError> {
     run_test(
         TlsAcceptor::builder()?
-            .with_certifiate_and_key_from_pem_files("certs/certs/server.crt", "certs/certs/server.key")?
+            .with_certifiate_and_key_from_pem_files(
+                "certs/certs/server.crt",
+                "certs/certs/server.key",
+            )?
             .build(),
         TlsConnector::builder()?
             .with_hostname_vertification_disabled()?
@@ -58,8 +61,8 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
 
             debug!("server: loop {}, received reply back bytes: {}", i, n);
             let mut str_bytes = vec![];
-            for j in 0..n {
-                str_bytes.push(buf[j]);
+            for item in buf.into_iter() {
+                str_bytes.push(item);
             }
             let message = String::from_utf8(str_bytes).expect("utf8");
             debug!("server: loop {}, received message: {}", i, message);
