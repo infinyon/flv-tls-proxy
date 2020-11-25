@@ -335,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "flv-tls-proxy"
-version = "0.3.0"
+version = "0.2.7"
 dependencies = [
  "async-trait",
  "bytes",
