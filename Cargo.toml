@@ -1,18 +1,12 @@
 [package]
 name = "flv-tls-proxy"
-version = "0.2.6"
+version = "0.3.0"
 edition = "2018"
 authors = ["Fluvio Contributors <team@fluvio.io>"]
 description = "Simple Local TLS Proxy"
 repository = "https://github.com/infinyon/flv-tls-proxy"
 license = "Apache-2.0"
 categories = ["encoding"]
-
-[features]
-default = ["rust_tls"]
-spawn = []
-rust_tls = ["fluvio-future/rust_tls"]
-native_tls = ["fluvio-future/native2_tls"]
 
 [dependencies]
 log = "0.4.8"
@@ -26,14 +20,16 @@ serde_json = "1.0.59"
 async-trait = "0.1.41"
 event-listener = "2.5.1"
 tokio = { version = "0.2.21", features = ["macros"] }
-# Fluvio dependencies
-fluvio-future = { version = "0.1.8", features = ["net", "task"] }
+
+# Infinyon dependencies
+fluvio-future = { version = "0.1.12", features = ["net", "openssl_tls", "task"] }
 
 
 [dev-dependencies]
 bytes = "0.5.6"
-native-tls = "0.2.4"
-async-native-tls = "0.3.3"
-futures-util = { version = "0.3.5", features = ["sink"] }
 flv-util = { version = "0.5.0", features = ["fixture"] }
-fluvio-future = { version = "0.1.0", features = ["net", "fixture", "timer","native2_tls","rust_tls"] }
+fluvio-future = { version = "0.1.12", features = ["fixture", "timer"] }
+
+
+[patch.crates-io]
+fluvio-future = { path = "../future-aio" }
