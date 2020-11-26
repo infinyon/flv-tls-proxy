@@ -8,9 +8,7 @@ use log::error;
 use log::info;
 
 use fluvio_future::net::TcpStream;
-
-use crate::tls::DefaultServerTlsStream;
-use crate::tls::TlsAcceptor;
+use fluvio_future::openssl::{DefaultServerTlsStream, TlsAcceptor};
 
 type TerminateEvent = Arc<Event>;
 
@@ -18,13 +16,13 @@ use crate::authenticator::{Authenticator, NullAuthenticator};
 
 type SharedAuthenticator = Arc<Box<dyn Authenticator>>;
 
+/// start TLS proxy at addr to target
 pub async fn start(addr: &str, acceptor: TlsAcceptor, target: String) -> Result<(), IoError> {
     let builder = ProxyBuilder::new(addr.to_string(), acceptor, target);
     builder.start().await
 }
 
-/// start TLS proxy at addr to target
-
+/// start TLS proxy with authenticator at addr to target
 pub async fn start_with_authenticator(
     addr: &str,
     acceptor: TlsAcceptor,
@@ -110,8 +108,7 @@ impl ProxyBuilder {
     }
 }
 
-/// start TLS proxy at addr to target
-
+/// start TLS stream at addr to target
 async fn process_stream(
     acceptor: TlsAcceptor,
     raw_stream: TcpStream,
@@ -125,9 +122,9 @@ async fn process_stream(
 
     debug!("new connection from {}", source);
 
-    let handshake = acceptor.accept(raw_stream);
+    let handshake = acceptor.accept(raw_stream).await;
 
-    match handshake.await {
+    match handshake {
         Ok(inner_stream) => {
             debug!("handshake success from: {}", source);
             if let Err(err) = proxy(inner_stream, target, source.clone(), authenticator).await {
@@ -145,13 +142,13 @@ async fn proxy(
     authenticator: SharedAuthenticator,
 ) -> Result<(), IoError> {
     use crate::copy::copy;
-    use futures_lite::future::zip;
+    use fluvio_future::task::spawn;
 
     debug!(
         "trying to connect to target at: {} from source: {}",
         target, source
     );
-    let mut tcp_stream = TcpStream::connect(&target).await?;
+    let tcp_stream = TcpStream::connect(&target).await?;
 
     let auth_success = authenticator.authenticate(&tls_stream, &tcp_stream).await?;
     if !auth_success {
@@ -162,14 +159,13 @@ async fn proxy(
     }
 
     debug!("connect to target: {} from source: {}", target, source);
-    let mut target_sink = tcp_stream.clone();
 
-    //let (mut target_stream, mut target_sink) = tcp_stream.split();
+    let (mut target_stream, mut target_sink) = tcp_stream.split();
     let (mut from_tls_stream, mut from_tls_sink) = tls_stream.split();
 
     let s_t = format!("{}->{}", source, target);
     let t_s = format!("{}->{}", target, source);
-    let source_to_target_ft = async {
+    let source_to_target_ft = async move {
         match copy(&mut from_tls_stream, &mut target_sink, s_t.clone()).await {
             Ok(len) => {
                 debug!("total {} bytes copied from source to target: {}", len, s_t);
@@ -180,8 +176,8 @@ async fn proxy(
         }
     };
 
-    let target_to_source = async {
-        match copy(&mut tcp_stream, &mut from_tls_sink, t_s.clone()).await {
+    let target_to_source_ft = async move {
+        match copy(&mut target_stream, &mut from_tls_sink, t_s.clone()).await {
             Ok(len) => {
                 debug!("total {} bytes copied from target: {}", len, t_s);
             }
@@ -191,7 +187,7 @@ async fn proxy(
         }
     };
 
-    zip(source_to_target_ft, target_to_source).await;
-
+    spawn(source_to_target_ft);
+    spawn(target_to_source_ft);
     Ok(())
 }
