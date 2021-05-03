@@ -27,6 +27,3 @@ fluvio-future = { version = "0.3.0", features = ["net", "openssl_tls", "task"] }
 bytes = "1.0.0"
 flv-util = { version = "0.5.0", features = ["fixture"] }
 fluvio-future = { version = "0.3.0", features = ["fixture", "timer"] }
-
-[patch.crates-io]
-fluvio-future = { git = "https://github.com/infinyon/future-aio", version = "0.3.0" }
