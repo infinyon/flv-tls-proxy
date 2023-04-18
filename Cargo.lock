@@ -347,9 +347,9 @@ dependencies = [
 
 [[package]]
 name = "fluvio-future"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c5cd00d18863c3e95c7adeeefa35a27b9482abb987dc0c293215334e4f3fd69"
+checksum = "8186006d0ce6a5a65b200f53139ad151c568644a47dd122f3d0a683c74c4fad5"
 dependencies = [
  "async-io",
  "async-net",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "flv-tls-proxy"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "bytes",
