@@ -97,7 +97,7 @@ dependencies = [
  "polling",
  "rustix",
  "slab",
- "socket2",
+ "socket2 0.4.9",
  "waker-fn",
 ]
 
@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "fluvio-future"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8186006d0ce6a5a65b200f53139ad151c568644a47dd122f3d0a683c74c4fad5"
+checksum = "daf01d41a3439ecf3377477c34d5913241c186d03500a0a6793a6c2688815a61"
 dependencies = [
  "async-io",
  "async-net",
@@ -372,6 +372,7 @@ dependencies = [
  "openssl",
  "openssl-sys",
  "pin-project",
+ "socket2 0.5.3",
  "thiserror",
  "tracing",
  "tracing-subscriber",
@@ -1066,6 +1067,16 @@ checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "socket2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2538b18701741680e0322a2302176d3253a35388e2e62f172f64f4f16605f877"
+dependencies = [
+ "libc",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
