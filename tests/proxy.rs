@@ -11,7 +11,7 @@ use futures_lite::AsyncWriteExt;
 use futures_util::stream::StreamExt;
 
 use fluvio_future::net::{TcpListener, TcpStream};
-use fluvio_future::openssl::{TlsAcceptor, TlsConnector, TlsError};
+use fluvio_future::openssl::{TlsAcceptor, TlsConnector};
 use fluvio_future::test_async;
 
 use flv_tls_proxy::ProxyBuilder;
@@ -23,7 +23,7 @@ const PROXY: &str = "127.0.0.1:20000";
 const ITER: u16 = 10;
 
 #[test_async]
-async fn test_proxy() -> Result<(), TlsError> {
+async fn test_proxy() -> anyhow::Result<()> {
     run_test(
         TlsAcceptor::builder()?
             .with_certifiate_and_key_from_pem_files(
