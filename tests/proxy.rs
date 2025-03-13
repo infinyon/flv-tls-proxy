@@ -1,18 +1,15 @@
-use std::io::Error as IoError;
 use std::net::SocketAddr;
 use std::sync::Arc;
-
-use log::debug;
 
 use event_listener::Event;
 use futures_lite::future::zip;
 use futures_lite::AsyncReadExt;
 use futures_lite::AsyncWriteExt;
 use futures_util::stream::StreamExt;
+use tracing::debug;
 
 use fluvio_future::net::{TcpListener, TcpStream};
 use fluvio_future::openssl::{TlsAcceptor, TlsConnector};
-use fluvio_future::test_async;
 
 use flv_tls_proxy::ProxyBuilder;
 
@@ -20,29 +17,31 @@ const CA_PATH: &str = "certs/certs/ca.crt";
 
 const SERVER: &str = "127.0.0.1:19998";
 const PROXY: &str = "127.0.0.1:20000";
-const ITER: u16 = 10;
+const ITER: u16 = 1000;
 
-#[test_async]
-async fn test_proxy() -> anyhow::Result<()> {
+#[fluvio_future::test]
+async fn test_proxy() {
     run_test(
-        TlsAcceptor::builder()?
+        TlsAcceptor::builder()
+            .expect("tls builder failed")
             .with_certifiate_and_key_from_pem_files(
                 "certs/certs/server.crt",
                 "certs/certs/server.key",
-            )?
+            )
+            .expect("cert extraction failed")
             .build(),
-        TlsConnector::builder()?
-            .with_hostname_verification_disabled()?
-            .with_ca_from_pem_file(CA_PATH)?
+        TlsConnector::builder()
+            .expect("tls builder failed")
+            .with_hostname_verification_disabled()
+            .expect("hostname verification failed")
+            .with_ca_from_pem_file(CA_PATH)
+            .expect("ca extraction failed")
             .build(),
     )
     .await
-    .expect("proxy test failed");
-
-    Ok(())
 }
 
-async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), IoError> {
+async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) {
     let addr = SERVER.parse::<SocketAddr>().expect("parse");
     let event = Arc::new(Event::new());
 
@@ -59,17 +58,17 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
             let mut buf: Vec<u8> = vec![0; 1024];
             let n = tcp_stream.read(&mut buf).await.expect("read");
 
-            debug!("server: loop {}, received reply back bytes: {}", i, n);
+            debug!(i, n, "server: loop received reply back bytes");
             let mut str_bytes = vec![];
             for item in buf.into_iter().take(n) {
                 str_bytes.push(item);
             }
             let message = String::from_utf8(str_bytes).expect("utf8");
-            debug!("server: loop {}, received message: {}", i, message);
+            debug!(i, message, "server: loop, received message");
             assert_eq!(message, format!("message{}", i));
             let resply = format!("{}reply", message);
             let reply_bytes = resply.as_bytes();
-            debug!("sever: send back reply: {}", resply);
+            debug!(resply, "sever: send back reply");
             tcp_stream
                 .write_all(reply_bytes)
                 .await
@@ -77,8 +76,6 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
         }
 
         debug!("server done");
-
-        Ok(()) as Result<(), IoError>
     };
 
     let client_ft = async {
@@ -118,7 +115,6 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
 
         debug!("client done");
         event.notify(1);
-        Ok(()) as Result<(), IoError>
     };
 
     let proxy = ProxyBuilder::new(PROXY.to_owned(), acceptor, SERVER.to_string())
@@ -127,6 +123,4 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) -> Result<(), 
     let _ = zip(proxy.start(), zip(client_ft, server_ft)).await;
 
     // give little time to flush everything out
-
-    Ok(())
 }

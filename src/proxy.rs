@@ -1,11 +1,10 @@
 use std::{io::Error as IoError, sync::Arc};
 
+use anyhow::Result;
 use event_listener::Event;
 use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
-use log::debug;
-use log::error;
-use log::info;
+use tracing::{debug, error, info, instrument};
 
 use fluvio_future::net::TcpStream;
 use fluvio_future::openssl::{DefaultServerTlsStream, TlsAcceptor};
@@ -63,6 +62,7 @@ impl ProxyBuilder {
         self
     }
 
+    #[instrument(skip(self))]
     pub async fn start(self) -> Result<(), IoError> {
         use tokio::select;
 
@@ -70,7 +70,7 @@ impl ProxyBuilder {
         use fluvio_future::task::spawn;
 
         let listener = TcpListener::bind(&self.addr).await?;
-        info!("proxy started at: {}", self.addr);
+        info!(self.addr, "proxy started at");
         let mut incoming = listener.incoming();
         let shared_authenticator = Arc::new(self.authenticator);
 
@@ -109,6 +109,7 @@ impl ProxyBuilder {
 }
 
 /// start TLS stream at addr to target
+#[instrument(skip(acceptor, raw_stream, authenticator))]
 async fn process_stream(
     acceptor: TlsAcceptor,
     raw_stream: TcpStream,
@@ -120,13 +121,13 @@ async fn process_stream(
         .map(|addr| addr.to_string())
         .unwrap_or_else(|_| "".to_owned());
 
-    debug!("new connection from {}", source);
+    info!(source, "new connection from");
 
     let handshake = acceptor.accept(raw_stream).await;
 
     match handshake {
         Ok(inner_stream) => {
-            debug!("handshake success from: {}", source);
+            info!(source, "handshake success");
             if let Err(err) = proxy(inner_stream, target, source.clone(), authenticator).await {
                 error!("error processing tls: {} from source: {}", err, source);
             }
@@ -135,30 +136,27 @@ async fn process_stream(
     }
 }
 
+#[instrument(skip(tls_stream, authenticator))]
 async fn proxy(
     tls_stream: DefaultServerTlsStream,
     target: String,
     source: String,
     authenticator: SharedAuthenticator,
-) -> Result<(), IoError> {
+) -> Result<()> {
     use crate::copy::copy;
     use fluvio_future::task::spawn;
 
-    debug!(
-        "trying to connect to target at: {} from source: {}",
-        target, source
-    );
+    debug!("trying to connect to target");
     let tcp_stream = TcpStream::connect(&target).await?;
+    info!("open tcp stream");
 
     let auth_success = authenticator.authenticate(&tls_stream, &tcp_stream).await?;
     if !auth_success {
-        debug!("authentication failed, dropping connection");
+        info!("authentication failed, dropping connection");
         return Ok(());
     } else {
-        debug!("authentication succeeded");
+        info!("authentication succeeded");
     }
-
-    debug!("connect to target: {} from source: {}", target, source);
 
     let (mut target_stream, mut target_sink) = tcp_stream.split();
     let (mut from_tls_stream, mut from_tls_sink) = tls_stream.split();
@@ -168,7 +166,7 @@ async fn proxy(
     let source_to_target_ft = async move {
         match copy(&mut from_tls_stream, &mut target_sink, s_t.clone()).await {
             Ok(len) => {
-                debug!("total {} bytes copied from source to target: {}", len, s_t);
+                debug!(len, s_t, "total bytes copied from source to target");
             }
             Err(err) => {
                 error!("{} error copying: {}", s_t, err);
@@ -179,7 +177,7 @@ async fn proxy(
     let target_to_source_ft = async move {
         match copy(&mut target_stream, &mut from_tls_sink, t_s.clone()).await {
             Ok(len) => {
-                debug!("total {} bytes copied from target: {}", len, t_s);
+                debug!(len, t_s, "total bytes copied from target");
             }
             Err(err) => {
                 error!("{} error copying: {}", t_s, err);
