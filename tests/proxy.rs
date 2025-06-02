@@ -2,9 +2,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use event_listener::Event;
-use futures_lite::future::zip;
 use futures_lite::AsyncReadExt;
 use futures_lite::AsyncWriteExt;
+use futures_lite::future::zip;
 use futures_util::stream::StreamExt;
 use tracing::debug;
 
