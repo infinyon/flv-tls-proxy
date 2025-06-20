@@ -111,6 +111,12 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) {
             assert_eq!(reply_message, format!("message{}reply", i));
         }
 
+        // Properly shutdown the TLS connection
+        debug!("client: shutting down TLS connection");
+        if let Err(err) = tls_stream.close().await {
+            debug!("client: TLS shutdown warning: {}", err);
+        }
+
         debug!("client done");
         event.notify(1);
     };
