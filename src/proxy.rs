@@ -7,7 +7,7 @@ use futures_util::stream::StreamExt;
 use tracing::{debug, error, info, instrument};
 
 use fluvio_future::net::TcpStream;
-use fluvio_future::openssl::{DefaultServerTlsStream, TlsAcceptor};
+use fluvio_future::rust_tls::{DefaultServerTlsStream, TlsAcceptor};
 
 type TerminateEvent = Arc<Event>;
 
