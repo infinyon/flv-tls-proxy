@@ -2,12 +2,11 @@ use std::{io::Error as IoError, sync::Arc};
 
 use anyhow::Result;
 use event_listener::Event;
-use futures_util::io::AsyncReadExt;
 use futures_util::stream::StreamExt;
 use tracing::{debug, error, info, instrument};
 
 use fluvio_future::net::TcpStream;
-use fluvio_future::openssl::{DefaultServerTlsStream, TlsAcceptor};
+use fluvio_future::rust_tls::{DefaultServerTlsStream, TlsAcceptor};
 
 type TerminateEvent = Arc<Event>;
 
@@ -129,10 +128,10 @@ async fn process_stream(
         Ok(inner_stream) => {
             info!(source, "handshake success");
             if let Err(err) = proxy(inner_stream, target, source.clone(), authenticator).await {
-                error!("error processing tls: {} from source: {}", err, source);
+                error!(?source, ?err, "error processing tls");
             }
         }
-        Err(err) => error!("error handshaking: {} from source: {}", err, source),
+        Err(err) => error!(?source, ?err, "error handshaking"),
     }
 }
 
@@ -143,8 +142,7 @@ async fn proxy(
     source: String,
     authenticator: SharedAuthenticator,
 ) -> Result<()> {
-    use crate::copy::copy;
-    use fluvio_future::task::spawn;
+    use tokio_util::compat::FuturesAsyncReadCompatExt;
 
     debug!("trying to connect to target");
     let tcp_stream = TcpStream::connect(&target).await?;
@@ -158,34 +156,25 @@ async fn proxy(
         info!("authentication succeeded");
     }
 
-    let (mut target_stream, mut target_sink) = tcp_stream.split();
-    let (mut from_tls_stream, mut from_tls_sink) = tls_stream.split();
+    debug!(?source, ?target, "starting bidirectional copy between",);
 
-    let s_t = format!("{}->{}", source, target);
-    let t_s = format!("{}->{}", target, source);
-    let source_to_target_ft = async move {
-        match copy(&mut from_tls_stream, &mut target_sink, s_t.clone()).await {
-            Ok(len) => {
-                debug!(len, s_t, "total bytes copied from source to target");
-            }
-            Err(err) => {
-                error!("{} error copying: {}", s_t, err);
-            }
+    // Convert futures AsyncRead/AsyncWrite to tokio AsyncRead/AsyncWrite
+    let mut tls_compat = tls_stream.compat();
+    let mut tcp_compat = tcp_stream.compat();
+
+    match tokio::io::copy_bidirectional(&mut tls_compat, &mut tcp_compat).await {
+        Ok((tls_to_target_bytes, target_to_tls_bytes)) => {
+            info!(
+                ?source,
+                ?tls_to_target_bytes,
+                ?target_to_tls_bytes,
+                "proxy connection completed",
+            );
         }
-    };
-
-    let target_to_source_ft = async move {
-        match copy(&mut target_stream, &mut from_tls_sink, t_s.clone()).await {
-            Ok(len) => {
-                debug!(len, t_s, "total bytes copied from target");
-            }
-            Err(err) => {
-                error!("{} error copying: {}", t_s, err);
-            }
+        Err(err) => {
+            error!(?source, ?err, "error in bidirectional");
         }
-    };
+    }
 
-    spawn(source_to_target_ft);
-    spawn(target_to_source_ft);
     Ok(())
 }

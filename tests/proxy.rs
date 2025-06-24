@@ -6,10 +6,11 @@ use futures_lite::AsyncReadExt;
 use futures_lite::AsyncWriteExt;
 use futures_lite::future::zip;
 use futures_util::stream::StreamExt;
+use rustls::pki_types::ServerName;
 use tracing::debug;
 
 use fluvio_future::net::{TcpListener, TcpStream};
-use fluvio_future::openssl::{TlsAcceptor, TlsConnector};
+use fluvio_future::rust_tls::{TlsAcceptor, TlsConnector};
 
 use flv_tls_proxy::ProxyBuilder;
 
@@ -22,20 +23,16 @@ const ITER: u16 = 1000;
 #[fluvio_future::test]
 async fn test_proxy() {
     run_test(
-        TlsAcceptor::builder()
-            .expect("tls builder failed")
-            .with_certifiate_and_key_from_pem_files(
-                "certs/certs/server.crt",
-                "certs/certs/server.key",
-            )
-            .expect("cert extraction failed")
+        fluvio_future::rust_tls::AcceptorBuilder::with_safe_defaults()
+            .no_client_authentication()
+            .load_server_certs("certs/certs/server.crt", "certs/certs/server.key")
+            .unwrap()
             .build(),
-        TlsConnector::builder()
-            .expect("tls builder failed")
-            .with_hostname_verification_disabled()
-            .expect("hostname verification failed")
-            .with_ca_from_pem_file(CA_PATH)
-            .expect("ca extraction failed")
+        fluvio_future::rust_tls::ConnectorBuilder::with_safe_defaults()
+            .load_ca_cert(CA_PATH)
+            .unwrap()
+            .load_client_certs("certs/certs/server.crt", "certs/certs/server.key")
+            .unwrap()
             .build(),
     )
     .await
@@ -85,8 +82,9 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) {
         let tcp_stream = TcpStream::connect(PROXY.to_owned())
             .await
             .expect("connection fail");
+        let server = ServerName::try_from("localhost").expect("server name parse failed");
         let mut tls_stream = connector
-            .connect("localhost", tcp_stream)
+            .connect(server, tcp_stream)
             .await
             .expect("tls failed");
 
@@ -111,6 +109,12 @@ async fn run_test(acceptor: TlsAcceptor, connector: TlsConnector) {
                 i, reply_message
             );
             assert_eq!(reply_message, format!("message{}reply", i));
+        }
+
+        // Properly shutdown the TLS connection
+        debug!("client: shutting down TLS connection");
+        if let Err(err) = tls_stream.close().await {
+            debug!("client: TLS shutdown warning: {}", err);
         }
 
         debug!("client done");
